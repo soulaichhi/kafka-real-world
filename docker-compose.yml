@@ -1,0 +1,95 @@
+services:
+  kafka:
+    image: apache/kafka:latest
+    container_name: shop-kafka
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    ports:
+      - "9092:9092"                 # port EXTERNAL exposé à ta machine hôte
+    environment:
+      # --- Rôle du noeud (mode KRaft : ce conteneur est broker ET controller) ---
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+
+      # --- Les 3 portes d'entrée que le broker OUVRE (à quoi il écoute) ---
+      # CONTROLLER : usage interne KRaft (élection du leader)
+      # INTERNAL   : trafic DANS Docker (kafka-ui, futurs brokers)
+      # EXTERNAL   : trafic depuis l'hôte (toi + tes apps Spring)
+      KAFKA_LISTENERS: CONTROLLER://:9093,INTERNAL://:29092,EXTERNAL://:9092
+
+      # --- Les adresses que le broker RENVOIE aux clients pour re-contacter ---
+      # (le coeur du "piège advertised.listeners")
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://shop-kafka:29092,EXTERNAL://localhost:9092
+
+      # --- Protocole de chaque listener (tout en clair, pas de TLS en local) ---
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+
+      # --- Quel listener sert à quoi ---
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+
+      # --- Le quorum KRaft : "noeud 1 se trouve sur shop-kafka:9093" ---
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@shop-kafka:9093
+
+      # --- Un seul broker => tous les facteurs de réplication forcés à 1 ---
+      # (sinon Kafka refuse de créer ses topics internes et plante au démarrage)
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+      # --- Confort dev : pas d'attente avant le premier rebalance des consumers ---
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+  kafka-ui:
+    image: kafbat/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8080:8080"
+    depends_on:
+      - kafka
+    environment:
+      DYNAMIC_CONFIG_ENABLED: 'true'
+      KAFKA_CLUSTERS_0_NAME: 'local-kraft-cluster'
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: 'kafka:29092'
+  order-db:
+    image: postgres:16-alpine
+    container_name: order_db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: admin_user_1
+      POSTGRES_PASSWORD: secure_password_1
+      POSTGRES_DB: order_db
+    volumes:
+      - pg_data_1:/var/lib/postgresql/data
+  payment-db:
+    image: postgres:16-alpine
+    container_name: payment_db
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: admin_user_2
+      POSTGRES_PASSWORD: secure_password_2
+      POSTGRES_DB: payment_db
+    volumes:
+      - pg_data_2:/var/lib/postgresql/data
+  inventory-db:
+    image: postgres:16-alpine
+    container_name: inventory_db
+    restart: unless-stopped
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: admin_user_3
+      POSTGRES_PASSWORD: secure_password_3
+      POSTGRES_DB: inventory_db
+    volumes:
+      - pg_data_3:/var/lib/postgresql/data
+
+volumes:
+  pg_data_1:
+  pg_data_2:
+  pg_data_3:
+  kafka_data:
