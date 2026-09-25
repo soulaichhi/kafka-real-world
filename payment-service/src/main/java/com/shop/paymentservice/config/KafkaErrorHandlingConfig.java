@@ -1,4 +1,4 @@
-package com.shop.inventoryservice.config;
+package com.shop.paymentservice.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,7 +9,6 @@ import org.springframework.util.backoff.FixedBackOff;
 
 @Configuration
 public class KafkaErrorHandlingConfig {
-
     @Bean
     public DeadLetterPublishingRecoverer deadLetterRecoverer (KafkaTemplate<Object,Object> kafkaTemplate) {
         return new DeadLetterPublishingRecoverer(kafkaTemplate);

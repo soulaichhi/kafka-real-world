@@ -1,6 +1,8 @@
 package com.shop.orderservice.model;
 
+import com.shop.orderservice.enums.PaymentStatus;
 import com.shop.orderservice.enums.Status;
+import com.shop.orderservice.enums.StockStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -21,4 +23,8 @@ public class Order {
     private BigDecimal amount;
     @Enumerated(EnumType.STRING)
     private Status status;
+    @Enumerated(EnumType.STRING)
+    private PaymentStatus paymentStatus;
+    @Enumerated(EnumType.STRING)
+    private StockStatus stockStatus;
 }
